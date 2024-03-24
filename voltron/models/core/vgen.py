@@ -366,7 +366,7 @@ class VGen(nn.Module):
         else:
             return multimodal_embeddings[:, self.patch2embed.num_patches :]
 
-    def score(self, imgs: torch.Tensor, langs: torch.Tensor, lang_masks: torch.Tensor) -> torch.Tensor:
+    def score(self, imgs: torch.Tensor, language: Optional[Union[List[str], Tuple[str]]]) -> torch.Tensor:
         """
         Given an example 0-K pair and a set of k language instructions, output scores under the generative language
         model for each instruction.
@@ -377,6 +377,9 @@ class VGen(nn.Module):
 
         :return: [1, k] Tensor of LM probabilities given imgs.
         """
+        tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
+        langs, lang_masks = tokens["input_ids"].to(self.lm.device), tokens["attention_mask"].to(self.lm.device)
+        
         # Blank out the "encoder" language --> just [<CLS> = 101, 0 ...]
         blank_lang = torch.zeros(1, self.max_lang_len, dtype=torch.int64, device=imgs.device)
         blank_lang_mask = torch.zeros(1, self.max_lang_len, dtype=torch.int64, device=imgs.device)
