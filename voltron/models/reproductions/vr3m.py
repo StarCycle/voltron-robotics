@@ -191,8 +191,19 @@ class VR3M(nn.Module):
             transformer_embeddings = self.lm(lang, attention_mask=lang_mask).last_hidden_state
             return transformer_embeddings.mean(dim=1)
 
-    def get_reward(self, initial: torch.Tensor, later: torch.Tensor, lang: torch.Tensor) -> torch.Tensor:
-        return self.language_reward(torch.cat([initial, later, lang], dim=-1)).squeeze()
+    # def get_reward(self, initial: torch.Tensor, later: torch.Tensor, lang: torch.Tensor) -> torch.Tensor:
+    #     return self.language_reward(torch.cat([initial, later, lang], dim=-1)).squeeze()
+
+    def get_reward(self, imgs, language) -> torch.Tensor:
+        all_images = rearrange(imgs, "bsz n_states c res1 res2 -> (bsz n_states) c res1 res2", n_states=2)
+        all_embeddings = self.encode_images(all_images)
+        initial, later = rearrange(
+            all_embeddings, "(bsz n_states) embed -> n_states bsz embed", n_states=2
+        )
+        tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
+        lang, lang_mask = tokens["input_ids"].to(self.lm.device), tokens["attention_mask"].to(self.lm.device)
+        lang_embed = self.encode_language(lang, lang_mask)
+        return self.language_reward(torch.cat([initial, later, lang_embed], dim=-1)).squeeze()
 
     def forward(self, imgs: torch.Tensor, lang: torch.Tensor, lang_mask: torch.Tensor) -> Tuple[torch.tensor, ...]:
         """
