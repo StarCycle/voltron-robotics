@@ -10,3 +10,7 @@ model, preprocess = load("v-gen", device=device, freeze=True)
 dual_img = torch.stack([preprocess(image_a), preprocess(image_b)])[None, ...].to(device)
 score = model.score(dual_img, [LANGUAGE])
 print(score)
+
+model, preprocess = load("r-r3m-vit", device=device, freeze=True)
+score = model.get_reward(dual_img, [LANGUAGE])
+print(score)
